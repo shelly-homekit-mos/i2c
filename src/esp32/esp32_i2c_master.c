@@ -23,8 +23,10 @@
 #include "mgos_i2c.h"
 
 #include "driver/gpio.h"
-#include "driver/periph_ctrl.h"
+#include "esp_rom_gpio.h"
+#include "esp_private/periph_ctrl.h"
 #include "soc/gpio_sig_map.h"
+#include "soc/gpio_periph.h"
 #include "soc/i2c_reg.h"
 #include "soc/i2c_struct.h"
 
@@ -119,9 +121,9 @@ static bool esp32_i2c_reset(struct mgos_i2c *c, int new_freq) {
   i2c_dev_t *dev = c->dev;
 
   /* Disconnect from output while resetting to avoid glitch on the bus. */
-  gpio_matrix_out(c->cfg.scl_gpio, SIG_GPIO_OUT_IDX, false /* out_inv */,
+  esp_rom_gpio_connect_out_signal(c->cfg.scl_gpio, SIG_GPIO_OUT_IDX, false /* out_inv */,
                   false /* oen_inv */);
-  gpio_matrix_out(c->cfg.sda_gpio, SIG_GPIO_OUT_IDX, false /* out_inv */,
+  esp_rom_gpio_connect_out_signal(c->cfg.sda_gpio, SIG_GPIO_OUT_IDX, false /* out_inv */,
                   false /* oen_inv */);
 
   periph_module_enable(c->pm);
@@ -146,18 +148,18 @@ static bool esp32_i2c_reset(struct mgos_i2c *c, int new_freq) {
   r |= gpio_set_level(c->cfg.scl_gpio, 1);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[c->cfg.scl_gpio], PIN_FUNC_GPIO);
   r |= gpio_set_direction(c->cfg.scl_gpio, GPIO_MODE_INPUT_OUTPUT_OD);
-  gpio_matrix_out(c->cfg.scl_gpio, c->scl_out_sig, false /* out_inv */,
+  esp_rom_gpio_connect_out_signal(c->cfg.scl_gpio, c->scl_out_sig, false /* out_inv */,
                   false /* oen_inv */);
   r |= gpio_set_pull_mode(c->cfg.scl_gpio, GPIO_PULLUP_ONLY);
-  gpio_matrix_in(c->cfg.scl_gpio, c->scl_in_sig, false /* inv */);
+  esp_rom_gpio_connect_in_signal(c->cfg.scl_gpio, c->scl_in_sig, false /* inv */);
 
   r |= gpio_set_level(c->cfg.sda_gpio, 1);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[c->cfg.sda_gpio], PIN_FUNC_GPIO);
   r |= gpio_set_pull_mode(c->cfg.sda_gpio, GPIO_PULLUP_ONLY);
   r |= gpio_set_direction(c->cfg.sda_gpio, GPIO_MODE_INPUT_OUTPUT_OD);
-  gpio_matrix_out(c->cfg.sda_gpio, c->sda_out_sig, false /* out_inv */,
+  esp_rom_gpio_connect_out_signal(c->cfg.sda_gpio, c->sda_out_sig, false /* out_inv */,
                   false /* oen_inv */);
-  gpio_matrix_in(c->cfg.sda_gpio, c->sda_in_sig, false /* inv */);
+  esp_rom_gpio_connect_in_signal(c->cfg.sda_gpio, c->sda_in_sig, false /* inv */);
 
   if (r != ESP_OK) {
     LOG(LL_ERROR, ("Failed to configure pins"));
@@ -231,14 +233,14 @@ static bool esp32_i2c_exec(struct mgos_i2c *c, int num_cmds, int exp_tx,
   }
   if (c->debug) {
     LOG(LL_DEBUG,
-        ("  %d loops, ok? %d, ints 0x%08x -> 0x%08x, "
-         "tx_fifo %u/%d rx_fifo %u/%d, st 0x%08x ctr 0x%08x nr %d",
+        ("  %d loops, ok? %d, ints 0x%08"PRIx32" -> 0x%08"PRIx32", "
+         "tx_fifo %u/%d rx_fifo %u/%d, st 0x%08"PRIx32" ctr 0x%08"PRIx32" nr %d",
          loops, ok, ints_before, ints, dev->status_reg.tx_fifo_cnt, exp_tx,
          dev->status_reg.rx_fifo_cnt, exp_rx, dev->status_reg.val, dev->ctr.val,
          c->num_bus_resets));
     for (int ci = 0; ci < num_cmds; ci++) {
       LOG(LL_DEBUG,
-          ("    %08x %d", dev->command[ci].val, dev->command[ci].op_code));
+          ("    %08"PRIx32" %d", dev->command[ci].val, dev->command[ci].op_code));
     }
   }
   /* If we have a timeout and did not transfer a single byte,

@@ -62,7 +62,7 @@ bool mgos_i2c_write_reg_b(struct mgos_i2c *conn, uint16_t addr, uint8_t reg,
 
 bool mgos_i2c_write_reg_w(struct mgos_i2c *conn, uint16_t addr, uint8_t reg,
                           uint16_t value) {
-  uint8_t tmp[3] = {reg, (uint8_t)(value >> 8), (uint8_t) value};
+  uint8_t tmp[3] = {reg, (uint8_t) (value >> 8), (uint8_t) value};
   return mgos_i2c_write(conn, addr, tmp, sizeof(tmp), true /* stop */);
 }
 
@@ -208,7 +208,7 @@ bool mgos_i2c_setbits_reg_w(struct mgos_i2c *i2c, uint16_t addr, uint8_t reg,
   new = old | (((1 << bitlen) - 1) << bitoffset);
   new &= ~(((1 << bitlen) - 1) << bitoffset);
   new |= (value) << bitoffset;
-  
+
   return mgos_i2c_write_reg_w(i2c, addr, reg, new);
 }
 
